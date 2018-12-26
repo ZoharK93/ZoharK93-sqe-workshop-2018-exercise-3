@@ -21,7 +21,11 @@
     "author": "",
     "license": "ISC",
     "dependencies": {
+        "d3-graphviz": "^2.6.0",
+        "esgraph": "^0.3.0",
         "esprima": "^4.0.0",
+        "flowchart": "^1.2.0",
+        "flowchart.js": "^1.11.3",
         "jquery": "^3.3.1"
     },
     "devDependencies": {
