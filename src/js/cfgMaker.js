@@ -1,4 +1,5 @@
 import {getLabel} from './labelGetter';
+import {getFlow} from './flowSelector';
 export {makeCFG, buildCFGNodes};
 
 function getLabels(cfg){
@@ -59,8 +60,9 @@ function mergeNodes(cfg){
     return cfg;
 }
 
-function makeCFG(cfg){
+function makeCFG(cfg,params){
     let newCFG = trimCFG(getLabels(cfg));
+    getFlow(newCFG[0][0],params);
     return mergeNodes(newCFG);
 }
 
@@ -78,14 +80,14 @@ function getTransition(trStr){
     return {from: arr[0], to: arr[2],cond: condStr};
 }
 
-function buildCFGNodes(cfgStr){
+function buildCFGNodes(cfgStr, nodesData){
     let lines = cfgStr.split(']\n'); let nodes = {}; let transitions = [];
     for(let i=0;i<lines.length;i++){
-        let line = lines[i];
-        if(line === '') continue;
+        let line = lines[i]; if(line === '') continue;
         if(line.indexOf('->') === -1){
             let node = getNode(line);
             nodes[node.name] = node;
+            nodes[node.name].flowstate = getNodeState(node.text, nodesData);
         } else{
             let transition = getTransition(line);
             if(transition.cond === '')
@@ -110,16 +112,17 @@ function addMergingNodesAndEnds(nodes, transitions){
             let nodeName = 'm'+mergeCount;
             nodes[nodeName] = {name: nodeName, text: ' \\\\', type: 'start'};
             transitions = transitions.filter(tr => tr.to !== node);
-            for(let i=0;i<inTrs.length;i++){
-                let tr = inTrs[i];
-                transitions.push({from:tr.from, to: nodeName, cond: ''});
-            }
+            nodes[nodeName].flowstate = getMergeFlowState(inTrs, nodes);
+            for(let i=0;i<inTrs.length;i++)
+                transitions.push({from:inTrs[i].from, to: nodeName, cond: ''});
             transitions.push({from: nodeName, to: node, cond: ''});
+            mergeCount++;
         }
     }
     return sortTransitions(transitions,regNodes);
 }
 
+// eslint-disable-next-line complexity
 function sortTransitions(transitions,regNodes){
     let sortedTrs = [];
     let index = 0; let prefix = 'n'
@@ -136,4 +139,22 @@ function sortTransitions(transitions,regNodes){
             index++;
     }
     return sortedTrs;
+}
+
+function getNodeState(nodeText, nodes) {
+    for(let i=0;i<nodes.length;i++){
+        if (nodes[i].label === nodeText)
+            return nodes[i].flowstate;
+    }
+    return null;
+
+}
+
+function getMergeFlowState(inTrs, nodes) {
+    for(let i=0;i<inTrs.length;i++){
+        if (nodes[inTrs[i].from].flowstate === 'approved')
+            return 'request';
+    }
+    return 'invalid';
+
 }

@@ -1,156 +1,122 @@
-export {getFlow};
+export {getParamValues, getFlow};
 
-const replaceFunc = {
-    Identifier: getFlowInIdentifier,
-    ArrayExpression: getFlowInArrayExpression,
-    BlockStatement: getFlowInBlockStatement,
-    ExpressionStatement: getFlowInExpressionStatement,
-    VariableDeclaration: getFlowInVariableDeclaration,
-    BinaryExpression: getFlowInBinaryExpression,
-    UnaryExpression: getFlowInUnaryExpression,
-    MemberExpression: getFlowInMemberExpression,
-    ReturnStatement: getFlowInReturnStatement,
-    AssignmentExpression: getFlowInAssignmentExpression,
-    IfStatement: getFlowInIfStatement,
-    WhileStatement: getFlowInWhileStatement
+const evalFunc = {
+    Literal: evalLiteral,
+    Identifier: evalIdentifier,
+    ArrayExpression: evalArrayExpression,
+    ExpressionStatement: evalExpressionStatement,
+    VariableDeclaration: evalVariableDeclaration,
+    BinaryExpression: evalBinaryExpression,
+    UnaryExpression: evalUnaryExpression,
+    UpdateExpression: evalUpdateExpression,
+    MemberExpression: evalMemberExpression,
+    ReturnStatement: evalReturnStatement,
+    AssignmentExpression: evalAssignmentExpression,
 };
 
-function getFlowInBlockStatement(node, vars){
-    let code = node.astNode;
-    for(let i=0;i<code.body.length;i++){
-        code.body[i] = getFlow(node.body[i], vars);
-        if(node.body[i] == null) delete code.body[i];
-    }
-    code.body = code.body.filter(value => Object.keys(value).length !== 0);
-    return code;
+
+function evalExpressionStatement(node, vars){
+    return evaluate(node.expression,vars);
 }
 
-function getFlowInArrayExpression(node, vars){
-    let code = node.astNode;
-    for(let i=0;i<code.elements.length;i++){
-        code.elements[i] = getFlow(node.elements[i], vars);
-    }
-    return code;
+function evalVariableDeclaration(node, vars){
+    let arg = node.declarations[0];
+    let val = evaluate(arg.init,vars);
+    vars[arg.id.name] = val;
+    return arg;
 }
 
-function getFlowInExpressionStatement(node, vars){
-    let code = node.astNode;
-    code.expression = getFlow(node.expression,vars);
-    if(node.expression == null) {delete code.expression; return null;}
-    return code;
+// eslint-disable-next-line no-unused-vars
+function evalLiteral(node, vars){
+    return eval(node.raw);
 }
 
-function getFlowInVariableDeclaration(node, vars){
-    let code = node.astNode;
-    let arg = code.declarations[0];
-    arg.init = getFlow(arg.init,vars);
-    vars[arg.id.name] = arg.init;
+function evalIdentifier(node, vars){
+    return vars[node.name];
+}
+
+function evalArrayExpression(node, vars){
+    let arr = [];
+    for(let i=0;i<node.elements.length;i++)
+        arr.push(evaluate(node.elements[i],vars));
+    return arr;
+}
+
+function evalMemberExpression(node, vars){
+    let name = node.object.name;
+    return vars[name][node.property.value];
+}
+
+function evalBinaryExpression(node, vars){
+    let left = evaluate(node.left, vars);
+    let right = evaluate(node.right, vars);
+    return eval(left + ' ' + node.operator + ' ' + right);
+}
+
+function evalUnaryExpression(node, vars){
+    let arg = evaluate(node.argument, vars);
+    return node.prefix? eval(node.operator + '' + arg):eval(arg + '' + node.operator);
+}
+
+function evalUpdateExpression(node, vars){
+    let arg = evaluate(node.argument, vars);
+    return node.operator === '++'? eval(arg + ' + 1'): eval(arg + ' - 1');
+}
+
+// eslint-disable-next-line no-unused-vars
+function evalReturnStatement(node, vars){
     return null;
 }
 
-function getFlowInIdentifier(node, vars){
-    let code = node.astNode;
-    if(node.name in vars){
-        code = vars[code.name];
-    }
-    return code;
-}
-
-function getFlowInMemberExpression(node, vars){
-    let code = node.astNode;
-    let name = code.object.name;
-    if(name in vars){
-        code = vars[name].elements[code.property.value];
-    }
-    return code;
-}
-
-function getFlowInBinaryExpression(node, vars){
-    let code = node.astNode;
-    code.left = getFlow(node.left, vars);
-    code.right = getFlow(node.right, vars);
-    return calculate(node);
-}
-
-function getFlowInUnaryExpression(node, vars){
-    let code = node.astNode;
-    code.argument = getFlow(node.argument, vars);
-    return code;
-}
-
-function getFlowInReturnStatement(node, vars){
-    let code = node.astNode;
-    if(node.argument != null)
-        code.argument = getFlow(node.argument, vars);
-    return code;
-}
-
-function getFlowInAssignmentExpression(node, vars){
-    let code = node.astNode;
-    code.right = getFlow(node.right,vars);
-    let arg = code.left;
-    if(getName(arg) in vars) {
-        if (arg.type === 'Identifier')
-            vars[arg.name] = code.right;
-        else
-            vars[arg.object.name].elements[arg.property.value] = code.right;
-        return null;
-    }
-    else if (arg.type === 'MemberExpression')
-        arg.property = getFlow(arg.property,vars);
-    return code;
-}
-
-function getFlowInIfStatement(node, vars){
-    let code = node.astNode;
-    let varsCopy = {};
-    for (let i in vars)
-        varsCopy[i] = vars[i];
-    code.test = getFlow(node.test,vars);
-    code.consequent = getFlow(node.consequent,varsCopy);
-    if(node.alternate != null)
-        code.alternate = getFlow(node.alternate,vars);
-    return code;
-}
-
-function getFlowInWhileStatement(node, vars){
-    let code = node.astNode;
-    let varsCopy = {};
-    for (let i in vars)
-        varsCopy[i] = vars[i];
-    code.test = getFlow(node.test,vars);
-    code.body = getFlow(node.body,varsCopy);
-    return code;
+function evalAssignmentExpression(node, vars){
+    let val = evaluate(node.right,vars);
+    let arg = node.left;
+    if (arg.type === 'Identifier')
+        vars[arg.name] = val;
+    else
+        vars[arg.object.name][arg.property.value] = val;
+    return arg;
 }
 
 function getFlow(cfg, vars){
-    cfg['color'] = 'green';
     if (cfg === null || cfg === undefined) return '';
-    let func = replaceFunc[cfg.astNode.type];
-    func(cfg,vars);
-    return cfg;
-
-}
-
-function getName(exp){
-    switch(exp.type){
-    case 'Identifier':
-        return exp.name;
-    default:
-        return exp.object.name;
+    if ('flowstate' in cfg){
+        getFlow(cfg.false, vars);
+        return;
     }
+
+    cfg['flowstate'] = 'approved';
+    let res = evaluate(cfg.astNode,vars);
+    let nextNode = selectNextNode(cfg, vars, res);
+    getFlow(nextNode, vars);
+    //return cfg;
 }
 
-function calculate(binexp){
-    if(binexp.left.type === 'BinaryExpression') binexp.left = calculate(binexp.left);
-    if(binexp.right.type === 'BinaryExpression') binexp.right = calculate(binexp.right);
-    if(binexp.left.type === 'Literal' && binexp.right.type === 'Literal')
-        return calcBothLit(binexp);
-    return binexp;
+function evaluate(cfg, vars){
+    let func = evalFunc[cfg.type];
+    return func(cfg, vars);
 }
 
-function calcBothLit(binexp){
-    let left = binexp.left; let right = binexp.right; let op = binexp.operator;
-    let val = eval(left.raw + ' ' + op + ' ' + right.raw);
-    return {'type': 'Literal', 'value': val, 'raw': val.toString()};
+function selectNextNode(cfg, vars, res){
+    if (res === null) return null;
+    if('normal' in cfg)
+        return cfg.normal;
+    else if (res)
+        return cfg.true;
+    else
+        return cfg.false;
+}
+
+function getParamValues(values, funcParams){
+    let paramValues = {};
+    if (values.type !== 'SequenceExpression') {
+        paramValues[funcParams[0].name] = evaluate(values,{});
+    }
+    else{
+        for(let i=0;i<funcParams.length;i++){
+            let param = funcParams[i];
+            paramValues[param.name] = evaluate(values.expressions[i]);
+        }
+    }
+    return paramValues;
 }
