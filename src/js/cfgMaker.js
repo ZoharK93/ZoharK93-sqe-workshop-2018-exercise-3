@@ -13,7 +13,7 @@ function setNext(parent, node, next){
         if(next !== undefined) parent.normal = next;
         else delete parent.normal;
     }
-    else if (parent.true === node)
+    else if (parent.true.astNode === node.astNode)
         parent.true = next;
     else
         parent.false = next;
@@ -25,9 +25,11 @@ function deleteNode(node) {
     for(let i=0;i< node.prev.length;i++){
         node.prev[i] = setNext(node.prev[i],node,next);
     }
+    next.prev = node.prev;
 }
 
 function trimCFG(cfg){
+    cfg[0] = cfg[0].next;
     delete cfg[2][0];
     cfg[2][1].parent = undefined; cfg[2][1].prev = [];
     for(let i=1;i<cfg[2].length;i++) {
@@ -77,8 +79,7 @@ function getTransition(trStr){
 }
 
 function buildCFGNodes(cfgStr){
-    let lines = cfgStr.split(']\n');
-    let nodes = {}; let transitions = [];
+    let lines = cfgStr.split(']\n'); let nodes = {}; let transitions = [];
     for(let i=0;i<lines.length;i++){
         let line = lines[i];
         if(line === '') continue;
@@ -94,9 +95,45 @@ function buildCFGNodes(cfgStr){
             transitions.push(transition);
         }
     }
+    transitions = addMergingNodesAndEnds(nodes,transitions);
+    return [nodes,transitions];
+}
+
+function addMergingNodesAndEnds(nodes, transitions){
+    let mergeCount = 0;
+    let regNodes = Object.keys(nodes).length;
     for (let node in nodes){
         if (nodes[node].type === undefined)
             nodes[node].type = 'operation';
+        let inTrs = transitions.filter(tr => tr.to === node);
+        if(inTrs.length > 1){
+            let nodeName = 'm'+mergeCount;
+            nodes[nodeName] = {name: nodeName, text: ' \\\\', type: 'start'};
+            transitions = transitions.filter(tr => tr.to !== node);
+            for(let i=0;i<inTrs.length;i++){
+                let tr = inTrs[i];
+                transitions.push({from:tr.from, to: nodeName, cond: ''});
+            }
+            transitions.push({from: nodeName, to: node, cond: ''});
+        }
     }
-    return [nodes,transitions];
+    return sortTransitions(transitions,regNodes);
+}
+
+function sortTransitions(transitions,regNodes){
+    let sortedTrs = [];
+    let index = 0; let prefix = 'n'
+    while(sortedTrs.length < transitions.length){
+        for(let i=0;i<transitions.length;i++){
+            let tr = transitions[i];
+            if(tr.from.startsWith(prefix) && parseInt(tr.from.substring(1)) === index)
+                sortedTrs.push(tr);
+        }
+        if(index === regNodes){
+            prefix = 'm'; index = 0;
+        }
+        else
+            index++;
+    }
+    return sortedTrs;
 }

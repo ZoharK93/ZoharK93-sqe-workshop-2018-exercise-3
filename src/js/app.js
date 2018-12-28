@@ -9,8 +9,10 @@ $(document).ready(function () {
         $('#CFG').empty();
         let codeToParse = $('#codePlaceholder').val();
         let parsedCode = parseCode(codeToParse);
-        const cfg = esgraph(parsedCode.body[0].body);
-        const cfgStr = esgraph.dot(makeCFG(cfg));
+        let params = $('#paramsInput').val().split(', ');
+        let paramValues = getParamValues(params, parsedCode.body[0].params);
+        const cfg = makeCFG(esgraph(parsedCode.body[0].body));
+        const cfgStr = esgraph.dot(cfg);
         $('#parsedCode').val(cfgStr);
         drawCFG(cfgStr);
     });
@@ -31,5 +33,17 @@ function drawCFG(cfgStr){
         cfg += '->' + tr.to + '\n';
     }
     let diagram = flowchart.parse(cfg);
-    diagram.drawSVG('CFG');
+    diagram.drawSVG('CFG',{'flowstate' : {
+        'request' : { 'font-color' : 'green'}, 'invalid': {'font-color' : 'white'}, 'approved' : { 'fill' : 'green' }
+    }});
+}
+
+function getParamValues(values, funcParams){
+    let paramValues = {};
+    for(let i=0;i<funcParams.length;i++){
+        let param = funcParams[i];
+        let val = values[i];
+        paramValues[param.name] = val;
+    }
+    return paramValues;
 }
