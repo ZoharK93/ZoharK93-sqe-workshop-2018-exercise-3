@@ -18,9 +18,8 @@ describe('The cfg maker', () => {
 
     it('is making an cfg with assignments and arrays correctly', () => {
         let cfg = makeGraphString('function f(x){let a = x[2] + 1;\n return a + x[0];}','[1,2,3]');
-        assert.deepEqual(cfg[0],{n0: {name: 'n0', index: 0, text: 'a = x[2] + 1', flowstate: 'approved', type: 'operation'},
-            n1: {name: 'n1', index: 1, text: 'return a + x[0]', flowstate: 'approved', type: 'operation'}});
-        assert.deepEqual(cfg[1],[{from: 'n0', to: 'n1', cond: ''}]);
+        assert.deepEqual(cfg[0],{n0: {name: 'n0', index: 0, text: 'a = x[2] + 1\nreturn a + x[0]', flowstate: 'approved', type: 'operation'}});
+        assert.deepEqual(cfg[1],[]);
     });
 });
 
@@ -127,6 +126,24 @@ describe('The cfg maker', () => {
             m0: {name: 'm0', text: ' \\\\', flowstate: 'request', type: 'start'}});
         assert.deepEqual(cfg[1],[{from: 'n0', to: 'n1', cond: ''},{from: 'n1', to: 'n2', cond: 'yes'},{from: 'n1', to: 'n4', cond: 'no'},
             {from: 'n2', to: 'm0', cond: ''},{from: 'n4', to: 'm0', cond: ''},{from: 'm0', to: 'n3', cond: ''}]); });
+});
+
+describe('The cfg maker', () => {
+    it('is making a complex cfg correctly', () => {
+        let cfg = makeGraphString('function foo(x, y, z){let a = x + 1;let b = a + y;let c = 0;\n' +
+            'if (b < z) {\nc = c + 5;c++;a++;\n} else if (b < z * 2) {\nc = c + x + 5;b++;z++;\n' +
+            '} else {\nc = c + z + 5;a--;x = x * y;\n}\na = b;\nb = c + 1;\nreturn c;\n}','1, 2, 3');
+        assert.deepEqual(cfg[0],{n0: {name: 'n0', index: 0, text: 'a = x + 1\nb = a + y\nc = 0', flowstate: 'approved', type: 'operation'},
+            n1: {name: 'n1', index: 1, text: 'b < z', flowstate: 'approved', type: 'condition'},
+            n2: {name: 'n2', index: 2, text: 'c = c + 5\nc++\na++', flowstate: undefined, type: 'operation'},
+            n3: {name: 'n3', index: 3, text: 'a = b\nb = c + 1\nreturn c', flowstate: 'approved', type: 'operation'},
+            n4: {name: 'n4', index: 4, text: 'b < z * 2', flowstate: 'approved', type: 'condition'},
+            n5: {name: 'n5', index: 5, text: 'c = c + x + 5\nb++\nz++', flowstate: 'approved', type: 'operation'},
+            n6: {name: 'n6', index: 6, text: 'c = c + z + 5\na--\nx = x * y', flowstate: undefined, type: 'operation'},
+            m0: {name: 'm0', text: ' \\\\', type: 'start', flowstate: 'request'}});
+        assert.deepEqual(cfg[1],[{from: 'n0', to: 'n1', cond: ''},{from: 'n1', to: 'n2', cond: 'yes'},{from: 'n1', to: 'n4', cond: 'no'},
+            {from: 'n2', to: 'm0', cond: ''},{from: 'n4', to: 'n5', cond: 'yes'},{from: 'n4', to: 'n6', cond: 'no'},
+            {from: 'n5', to: 'm0', cond: ''},{from: 'n6', to: 'm0', cond: ''},{from: 'm0', to: 'n3', cond: ''}]); });
 });
 
 function getGraph(func){

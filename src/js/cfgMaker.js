@@ -10,7 +10,10 @@ function getLabels(cfg){
 }
 
 function setNext(parent, node, next){
-    if (parent.true.astNode === node.astNode)
+    if('normal' in parent){
+        parent.normal = next;
+    }
+    else if (parent.true.astNode === node.astNode)
         parent.true = next;
     else
         parent.false = next;
@@ -46,7 +49,7 @@ function mergeNodes(cfg){
         let node = cfg[2][i];
         if ('normal' in node){
             let next = node.normal;
-            if (next.prev.length === 1 && 'normal' in next){
+            if (next.prev.length === 1 && !('true' in next)){
                 next.label = node.label + '\n' + next.label;
                 deleteNode(node);
                 delete cfg[2][i];
