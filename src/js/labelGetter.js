@@ -70,7 +70,7 @@ function getLabelBinaryExpression(code){
 
 function getLabelUnaryExpression(code){
     let val = getLabel(code.argument);
-    return code.prefix ? code.operator + val : val + code.operator;
+    return code.operator + val;
 }
 
 function getLabelReturnStatement(code){

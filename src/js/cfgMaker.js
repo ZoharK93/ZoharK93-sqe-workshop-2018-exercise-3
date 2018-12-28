@@ -10,11 +10,7 @@ function getLabels(cfg){
 }
 
 function setNext(parent, node, next){
-    if('normal' in parent){
-        if(next !== undefined) parent.normal = next;
-        else delete parent.normal;
-    }
-    else if (parent.true.astNode === node.astNode)
+    if (parent.true.astNode === node.astNode)
         parent.true = next;
     else
         parent.false = next;
@@ -22,7 +18,7 @@ function setNext(parent, node, next){
 }
 
 function deleteNode(node) {
-    let next = 'normal' in node? node.normal: undefined;
+    let next = node.normal;
     for(let i=0;i< node.prev.length;i++){
         node.prev[i] = setNext(node.prev[i],node,next);
     }
@@ -44,6 +40,7 @@ function trimCFG(cfg){
     return cfg;
 }
 
+// eslint-disable-next-line complexity
 function mergeNodes(cfg){
     for(let i=0;i<cfg[2].length;i++){
         let node = cfg[2][i];
@@ -57,6 +54,8 @@ function mergeNodes(cfg){
         }
     }
     cfg[2] = cfg[2].filter(value => Object.keys(value).length !== 0);
+    for(let i=0;i<cfg[2].length;i++)
+        cfg[2][i].xlabel = ''+i;
     return cfg;
 }
 
@@ -67,8 +66,8 @@ function makeCFG(cfg,params){
 }
 
 function getNode(nodeStr){
-    let arr = nodeStr.split(' [');
-    return {name: arr[0], text: arr[1].substring(arr[1].indexOf('"') + 1,arr[1].lastIndexOf('"'))};
+    let arr = nodeStr.split(' [label="');
+    return {name: arr[0], index: parseInt(arr[0].substring(1)), text: arr[1].substring(0,arr[1].lastIndexOf('"'))};
 }
 
 function getTransition(trStr){
@@ -114,7 +113,7 @@ function addMergingNodesAndEnds(nodes, transitions){
             transitions = transitions.filter(tr => tr.to !== node);
             nodes[nodeName].flowstate = getMergeFlowState(inTrs, nodes);
             for(let i=0;i<inTrs.length;i++)
-                transitions.push({from:inTrs[i].from, to: nodeName, cond: ''});
+                transitions.push({from:inTrs[i].from, to: nodeName, cond: inTrs[i].cond});
             transitions.push({from: nodeName, to: node, cond: ''});
             mergeCount++;
         }
@@ -125,7 +124,7 @@ function addMergingNodesAndEnds(nodes, transitions){
 // eslint-disable-next-line complexity
 function sortTransitions(transitions,regNodes){
     let sortedTrs = [];
-    let index = 0; let prefix = 'n'
+    let index = 0; let prefix = 'n';
     while(sortedTrs.length < transitions.length){
         for(let i=0;i<transitions.length;i++){
             let tr = transitions[i];
@@ -142,11 +141,14 @@ function sortTransitions(transitions,regNodes){
 }
 
 function getNodeState(nodeText, nodes) {
+    let state = undefined;
     for(let i=0;i<nodes.length;i++){
-        if (nodes[i].label === nodeText)
-            return nodes[i].flowstate;
+        if (nodes[i].label === nodeText){
+            state = nodes[i].flowstate;
+            break;
+        }
     }
-    return null;
+    return state;
 
 }
 

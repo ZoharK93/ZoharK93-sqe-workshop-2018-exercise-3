@@ -4,7 +4,6 @@ const evalFunc = {
     Literal: evalLiteral,
     Identifier: evalIdentifier,
     ArrayExpression: evalArrayExpression,
-    ExpressionStatement: evalExpressionStatement,
     VariableDeclaration: evalVariableDeclaration,
     BinaryExpression: evalBinaryExpression,
     UnaryExpression: evalUnaryExpression,
@@ -13,11 +12,6 @@ const evalFunc = {
     ReturnStatement: evalReturnStatement,
     AssignmentExpression: evalAssignmentExpression,
 };
-
-
-function evalExpressionStatement(node, vars){
-    return evaluate(node.expression,vars);
-}
 
 function evalVariableDeclaration(node, vars){
     let arg = node.declarations[0];
@@ -55,7 +49,7 @@ function evalBinaryExpression(node, vars){
 
 function evalUnaryExpression(node, vars){
     let arg = evaluate(node.argument, vars);
-    return node.prefix? eval(node.operator + '' + arg):eval(arg + '' + node.operator);
+    return eval(node.operator + '' + arg);
 }
 
 function evalUpdateExpression(node, vars){
@@ -79,7 +73,7 @@ function evalAssignmentExpression(node, vars){
 }
 
 function getFlow(cfg, vars){
-    if (cfg === null || cfg === undefined) return '';
+    if (cfg === null || cfg === undefined) return;
     if ('flowstate' in cfg){
         getFlow(cfg.false, vars);
         return;

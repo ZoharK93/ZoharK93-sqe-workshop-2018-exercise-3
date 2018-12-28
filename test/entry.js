@@ -1,1 +1,1 @@
-import './code-analyzer.test';
+import './cfgMaker.test';

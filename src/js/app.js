@@ -11,22 +11,18 @@ $(document).ready(function () {
         let codeToParse = $('#codePlaceholder').val();
         let parsedCode = parseCode(codeToParse);
         let params = parseCode($('#paramsInput').val());
-        let paramValues = getParamValues(params.body[0].expression, parsedCode.body[0].params);
+        let paramValues = params.body.length >0? getParamValues(params.body[0].expression, parsedCode.body[0].params): {};
         const cfg = makeCFG(esgraph(parsedCode.body[0].body),paramValues);
-        const cfgStr = esgraph.dot(cfg);
+        const cfgStr = esgraph.dot(cfg,{counter: 0});
         $('#parsedCode').val(cfgStr);
         drawCFG(cfgStr,cfg[2]);
     });
 });
 
 function drawCFG(cfgStr,nodes){
-    let cfgData = buildCFGNodes(cfgStr,nodes);
-    let cfg = '';
+    let cfgData = buildCFGNodes(cfgStr,nodes); let cfg = '';
     for(let node in cfgData[0]){
-        cfg += cfgData[0][node].name + '=>' + cfgData[0][node].type + ': ' + cfgData[0][node].text;
-        if('flowstate' in cfgData[0][node])
-            cfg += '|' + cfgData[0][node].flowstate;
-        cfg += '\n';
+        cfg += buildNodeStr(cfgData[0][node]);
     }
     cfg += '\n';
     for(let i=0;i<cfgData[1].length;i++){
@@ -37,7 +33,18 @@ function drawCFG(cfgStr,nodes){
         cfg += '->' + tr.to + '\n';
     }
     let diagram = flowchart.parse(cfg);
-    diagram.drawSVG('CFG',{'flowstate' : {
+    diagram.drawSVG('CFG',{'yes-text': 'T', 'no-text': 'F', 'flowstate' : {
         'request' : { 'fill' : 'green', 'font-color' : 'green'}, 'invalid': {'font-color' : 'white'}, 'approved' : { 'fill' : 'green' }
     }});
+}
+
+function buildNodeStr(node){
+    let str = node.name + '=>' + node.type + ': ';
+    if ('index' in node)
+        str += '(' + node.index + ')\n';
+    str += node.text;
+    if('flowstate' in node)
+        str += '|' + node.flowstate;
+    str += '\n';
+    return str;
 }
