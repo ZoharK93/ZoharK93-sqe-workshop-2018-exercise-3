@@ -83,9 +83,9 @@ function getTransition(trStr){
 }
 
 function buildCFGNodes(cfgStr, nodesData){
-    let lines = cfgStr.split(']\n'); let nodes = {}; let transitions = [];
+    let lines = getCfgLines(cfgStr); let nodes = {}; let transitions = [];
     for(let i=0;i<lines.length;i++){
-        let line = lines[i]; if(line === '') continue;
+        let line = lines[i];
         if(line.indexOf('->') === -1){
             let node = getNode(line);
             nodes[node.name] = node;
@@ -101,6 +101,21 @@ function buildCFGNodes(cfgStr, nodesData){
     }
     transitions = addMergingNodesAndEnds(nodes,transitions);
     return [nodes,transitions];
+}
+
+function getCfgLines(cfgStr){
+    let lines = []; let startIndex = 0; let parenCount = 0;
+    for(let i=0;i<cfgStr.length;i++){
+        if(cfgStr.charAt(i) === '[') parenCount++;
+        if(cfgStr.charAt(i) === ']'){
+            parenCount--;
+            if(parenCount == 0){
+                lines.push(cfgStr.substring(startIndex,i));
+                startIndex = i + 2;
+            }
+        }
+    }
+    return lines;
 }
 
 function addMergingNodesAndEnds(nodes, transitions){
